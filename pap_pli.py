@@ -161,21 +161,33 @@ def solve(P, D, T, S, H, hd, apd, rpt, f_name):
         # Otimizar
         model.setParam(GRB.Param.TimeLimit, 1800.0)
         model.optimize()
-        
-        print("Nome do modelo: ", model.ModelName)
-        print("\nValor da funcao objetivo: ", model.ObjVal)
-        print("\nNumero de variaveis de decisao: ", model.NumVars)
-        print("\nNumero de restricoes: ", model.NumConstrs)
-        print("\nNumero de objetivos: ", model.NumObj)
-        print("\nNumero de iteracoes: ", model.IterCount)
-        print("\nTempo de execucao: ", model.Runtime)
+
+        if model.status == GRB.OPTIMAL:    
+            print("Nome do modelo: ", model.ModelName)
+            print("Valor da funcao objetivo: ", model.ObjVal)
+            print("Numero de variaveis de decisao: ", model.NumVars)
+            print("Numero de restricoes: ", model.NumConstrs)
+            print("Numero de objetivos: ", model.NumObj)
+            print("Numero de iteracoes: ", model.IterCount)
+            print("Tempo de execucao: ", model.Runtime)
+
+        elif model.status == GRB.INF_OR_UNBD:    
+            print('Modelo inviavel ou ilimitado')    
+
+        elif model.status == GRB.INFEASIBLE:    
+            print('Modelo inviavel')    
+
+        elif model.status == GRB.UNBOUNDED:    
+            print('Modelo ilimitado')    
+
+        else:    
+            print('Otimizacao terminou com status %d' % model.status)    
 
     except gp.GurobiError as e:
-        print('Error code ' + str(e.errno) + ': ' + str(e))
+        print('Codigo de erro ' + str(e.errno) + ': ' + str(e))
 
     except AttributeError:
-        print('Encountered an attribute error')
-
+        print('Encontrado erro de atributo')
 
 if __name__ == "__main__":
 
