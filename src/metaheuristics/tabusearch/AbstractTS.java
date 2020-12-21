@@ -165,6 +165,10 @@ public abstract class AbstractTS<E> {
 			currentCost = currentSol.cost;
 			updateCL();
 
+			// always stop when CL is empty
+			if (CL.size() == 0)
+				break;
+
 			/*
 			 * Explore all candidate elements to enter the solution, saving the highest and
 			 * lowest cost variation achieved by the candidates.

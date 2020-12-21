@@ -39,6 +39,26 @@ public class PAP implements Evaluator<int[]> {
 
   public int[][] z;
 
+  /**
+   * number of professors p allocated to discipline d
+   */
+  public int[] npd;
+
+  /**
+   * number of periods t a discipline d is allocated at
+   */
+  public int[] ntd;
+
+  /**
+   * number of disciplines d allocated at time t
+   */
+  public int[] ndt;
+
+  /**
+   * number of times t a professor p works
+   */
+  public int[] ntp;
+
   public PAP(String filename) throws IOException {
     size = readInput(filename);
   }
@@ -69,11 +89,6 @@ public class PAP implements Evaluator<int[]> {
 
       // add d to the allocated set
       alloc.add(d);
-
-      // penalize solutions where discipline d is allocated at less than hd periods
-      if (y[d][t] < h[d]) {
-        _cost -= 100;
-      }
 
     }
 
@@ -116,12 +131,6 @@ public class PAP implements Evaluator<int[]> {
     // if the discipline is not allocated to a professor already, the insertion will
     // remove the cost penalty associated to it
     if (w[d] == 0) {
-      insCost += 100;
-    }
-
-    // if the discipline will be allocated to h[d] times, the insertion will remove
-    // the cost penalty associated to it
-    if (y[d][t] == h[d] - 1) {
       insCost += 100;
     }
 
@@ -227,93 +236,108 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
-  public Boolean isSolFeasible(Solution<int[]> sol) {
+  public void accumulate(Solution<int[]> sol) {
 
     setVariables(sol);
 
-    // number of disciplines d allocated at time t
-    int[] ndt = new int[T];
+    // instantiate accumulators
+    npd = new int[D];
+    ntd = new int[D];
+    ndt = new int[T];
+    ntp = new int[P];
 
     for (int d = 0; d < D; d++) {
-
-      // number of times t allocated to d
-      int ntd = 0;
-
-      for (int t = 0; t < T; t++) {
-
-        // check if discipline d is given at time t
-        if (y[d][t] == 1) {
-
-          ntd++;
-          ndt[t]++;
-
-          // at most S disciplines can be allocated at time t
-          if (ndt[t] > S)
-            return false;
-
-        }
-
-      }
-
-      // each discipline d requires h[d] times in a week
-      if (ntd > h[d])
-        return false;
-
-      // number of professors p allocated to d
-      int npd = 0;
-
       for (int p = 0; p < P; p++) {
-
         // check if professor p gives discipline d
         if (x[p][d] == 1)
-          npd++;
+          npd[d]++;
+      }
 
-        // a discipline must be allocated to at most 1 professor
-        if (npd > 1)
+      for (int t = 0; t < T; t++) {
+        // check if discipline d is given at time t
+        if (y[d][t] == 1) {
+          ntd[d]++;
+          ndt[t]++;
+        }
+      }
+    }
+
+    for (int p = 0; p < P; p++) {
+      for (int t = 0; t < T; t++) {
+        // check if professor p works at time t
+        if (z[p][t] == 1)
+          ntp[p]++;
+      }
+    }
+
+  }
+
+  public Boolean isElemFeasible(int[] elem) {
+
+    // get professor p, discipline d and time t
+    int p = elem[0], d = elem[1], t = elem[2];
+
+    // if there is other professor giving d, elem is infeasible
+    if (npd[d] == 1 && x[p][d] == 0)
+      return false;
+
+    // if d is already allocated at h[d] periods, elem is infeasible
+    if (ntd[d] == h[d] && y[d][t] == 0)
+      return false;
+
+    // if there are S disciplines allocated at time t, d cannot be allocated at t
+    if (ndt[t] == S && y[d][t] == 0)
+      return false;
+
+    // if professor p cannot work at time t, elem is infeasible
+    if (r[p][t] == 0)
+      return false;
+
+    // if professor p already work at H times, elem is infeasible
+    if (ntp[p] == H && z[p][t] == 0)
+      return false;
+
+    return true;
+
+  }
+
+  public Boolean isSolFeasible(Solution<int[]> sol) {
+
+    accumulate(sol);
+
+    for (int d = 0; d < D; d++) {
+      for (int t = 0; t < T; t++) {
+
+        // at most S disciplines can be allocated at time t
+        if (ndt[t] > S)
           return false;
 
       }
 
-    }
+      // each discipline d requires h[d] times in a week
+      if (ntd[d] != h[d])
+        return false;
 
-    for (int p = 0; p < P; p++) {
+      for (int p = 0; p < P; p++) {
 
-      // number of times t allocated to p
-      int ntp = 0;
-
-      for (int t = 0; t < T; t++) {
-
-        // check if professor p works at time t
-        if (z[p][t] == 1) {
-
-          System.out.println("aqui");
-
-          // a professor p only can work at time t if r[p][t] == 1
-          if (r[p][t] == 0)
-            return false;
-
-          ntp++;
-
-          // a professor p can work in at most H times
-          if (ntp > H)
-            return false;
-
-        }
+        // a discipline must be allocated to at most 1 professor
+        if (npd[d] > 1)
+          return false;
 
       }
-
     }
 
     for (int p = 0; p < P; p++) {
-      for (int d = 0; d < D; d++) {
-        for (int t = 0; t < T; t++) {
+      for (int t = 0; t < T; t++) {
 
-          // if a professor is allocated at discipline d and the discipline is allocated
-          // at time t, the professor must work at time t
-          if (x[p][d] + y[d][t] - 1 > z[p][t])
-            return false;
+        // a professor p only can work at time t if r[p][t] == 1
+        if (z[p][t] > r[p][t])
+          return false;
 
-        }
+        // a professor p can work in at most H times
+        if (ntp[p] > H)
+          return false;
+
       }
     }
 
