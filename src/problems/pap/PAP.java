@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StreamTokenizer;
 import java.util.Set;
+import java.util.Arrays;
 import java.util.HashSet;
 
 import problems.Evaluator;
@@ -14,6 +15,8 @@ import solutions.Solution;
 public class PAP implements Evaluator<int[]> {
 
   public final Integer size;
+
+  public final int pen = 5000;
 
   public int P;
 
@@ -75,27 +78,78 @@ public class PAP implements Evaluator<int[]> {
 
   @Override
   public Double evaluate(Solution<int[]> sol) {
+    return sol.cost = evaluatePAP(sol);
+  }
+
+  public Double evaluatePAP(Solution<int[]> sol) {
 
     Double _cost = 0.0;
-    Set<Integer> alloc = new HashSet<Integer>();
+
+    // number of times d is allocated
+    int[] ntd_ = new int[D];
 
     for (int[] elem : sol) {
 
       // get professor and discipline
-      int p = elem[0], d = elem[1], t = elem[2];
+      int p = elem[0], d = elem[1];
 
       // increment cost
       _cost += a[p][d];
 
-      // add d to the allocated set
-      alloc.add(d);
+      // discipline d is allocated one more time
+      ntd_[d]++;
 
     }
 
-    // penalize non allocated disciplines
-    _cost -= 100 * (D - alloc.size());
+    for (int d = 0; d < D; d++) {
 
-    return sol.cost = _cost;
+      // penalize non allocated disciplines
+      if (ntd_[d] == 0)
+        _cost -= 100;
+
+      // penalize infeasible solutions
+      else if (ntd_[d] != h[d])
+        _cost -= pen;
+
+    }
+
+    return _cost;
+
+  }
+
+  public Double evalNoPen(Solution<int[]> sol) {
+    
+    Double _cost = 0.0;
+
+    // number of times d is allocated
+    int[] ntd_ = new int[D];
+
+    for (int[] elem : sol) {
+
+      // get professor and discipline
+      int p = elem[0], d = elem[1];
+
+      // increment cost
+      _cost += a[p][d];
+
+      // discipline d is allocated one more time
+      ntd_[d]++;
+
+    }
+
+    for (int d = 0; d < D; d++) {
+
+      // penalize non allocated disciplines
+      if (ntd_[d] == 0)
+        _cost -= 100;
+
+      // penalize infeasible solutions
+      else if (ntd_[d] != h[d]) 
+        _cost -= pen;
+
+    }
+
+    return _cost;
 
   }
 
@@ -118,20 +172,21 @@ public class PAP implements Evaluator<int[]> {
     Double insCost = 0.0;
 
     // get professor and discipline
-    int p = elem[0], d = elem[1], t = elem[2];
+    int p = elem[0], d = elem[1];
 
     // element already in solution
     if (x[p][d] == 1) {
       return 0.0;
     }
 
-    // increment cost
-    insCost += a[p][d];
+    // increment cost; as in a feasible solution a discipline is allocated to at
+    // most one professor, the insertion will always remove the cost penalty
+    // associated to the non allocation of a discipline
+    insCost += a[p][d] + 100;
 
-    // if the discipline is not allocated to a professor already, the insertion will
-    // remove the cost penalty associated to it
-    if (w[d] == 0) {
-      insCost += 100;
+    // remove feasibility penalty if insertion make solution feasible
+    if (w[d] == h[d] - 1) {
+      insCost += pen;
     }
 
     return insCost;
@@ -164,13 +219,13 @@ public class PAP implements Evaluator<int[]> {
       return 0.0;
     }
 
-    // decrement cost
-    remCost -= a[p][d];
+    // decrement cost; as in a feasible solution a discipline is allocated to at
+    // most one professor, the removal will always penalize the cost
+    remCost -= a[p][d] + 100;
 
-    // if the discipline is allocated already and there aren't other professors
-    // giving it, removing the element would penalize the solution
-    if (w[d] == 1) {
-      remCost -= 100;
+    // penalize infeasibility if the removal makes the solution infeasible
+    if (w[d] == h[d]) {
+      remCost -= pen;
     }
 
     return remCost;
@@ -218,16 +273,12 @@ public class PAP implements Evaluator<int[]> {
     // check if disciplines are equal
     if (dIn != dOut) {
 
-      // if the discipline dIn is not allocated already, the insertion will remove the
-      // cost penalty
-      if (w[dIn] == 0) {
-        exCost += 100;
+      if (w[dIn] == h[dIn] - 1) {
+        exCost += pen;
       }
 
-      // if the discipline dOut is allocated already and there aren't other professors
-      // giving it, removing the element would penalize the solution
-      if (w[dOut] == 1) {
-        exCost -= 100;
+      if (w[dOut] == h[dOut]) {
+        exCost -= pen;
       }
 
     }
@@ -314,17 +365,14 @@ public class PAP implements Evaluator<int[]> {
 
       }
 
-      // each discipline d requires h[d] times in a week
-      if (ntd[d] != h[d])
+      // a discipline must be allocated to at most 1 professor
+      if (npd[d] > 1)
         return false;
 
-      for (int p = 0; p < P; p++) {
+      // if allocated, the discipline d requires h[d] times in a week
+      if (npd[d] > 0 && ntd[d] != h[d])
+        return false;
 
-        // a discipline must be allocated to at most 1 professor
-        if (npd[d] > 1)
-          return false;
-
-      }
     }
 
     for (int p = 0; p < P; p++) {

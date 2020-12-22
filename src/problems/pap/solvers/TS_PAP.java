@@ -114,8 +114,6 @@ public class TS_PAP extends AbstractTS<int[]> {
             }
         }
 
-        System.out.println(_CL.size());
-
         // copy _CL into CL
         CL = new ArrayList<int[]>(_CL);
 
@@ -130,20 +128,83 @@ public class TS_PAP extends AbstractTS<int[]> {
     @Override
     public Solution<int[]> createEmptySol() {
         Solution<int[]> sol = new Solution<int[]>();
-        sol.cost = -100.0 * pap.D;
+        sol.cost = 10000.0 * pap.D;
         return sol;
     }
 
     @Override
     public Solution<int[]> neighborhoodMove() {
-        // TODO Auto-generated method stub
+
+        Double minDeltaCost;
+        int[] bestCandIn = null, bestCandOut = null;
+        minDeltaCost = Double.POSITIVE_INFINITY;
+
+        // update candidate list
+        updateCL();
+
+        // Evaluate insertions of non-tabu candidates
+        for (int[] candIn : CL) {
+            Double deltaCost = ObjFunction.evaluateInsertionCost(candIn, currentSol);
+            if (!TL.contains(candIn) || currentSol.cost + deltaCost < incumbentSol.cost) {
+                if (deltaCost < minDeltaCost) {
+                    minDeltaCost = deltaCost;
+                    bestCandIn = candIn;
+                    bestCandOut = null;
+                }
+            }
+        }
+
+        // Evaluate removals of non-tabu candidates
+        for (int[] candOut : currentSol) {
+            Double deltaCost = ObjFunction.evaluateRemovalCost(candOut, currentSol);
+            if (!TL.contains(candOut) || currentSol.cost + deltaCost < incumbentSol.cost) {
+                if (deltaCost < minDeltaCost) {
+                    minDeltaCost = deltaCost;
+                    bestCandIn = null;
+                    bestCandOut = candOut;
+                }
+            }
+        }
+
+        // Evaluate exchanges of non-tabu candidates
+        for (int[] candIn : CL) {
+            for (int[] candOut : currentSol) {
+                Double deltaCost = ObjFunction.evaluateExchangeCost(candIn, candOut, currentSol);
+                if ((!TL.contains(candIn) && !TL.contains(candOut))
+                        || currentSol.cost + deltaCost < incumbentSol.cost) {
+                    if (deltaCost < minDeltaCost) {
+                        minDeltaCost = deltaCost;
+                        bestCandIn = candIn;
+                        bestCandOut = candOut;
+                    }
+                }
+            }
+        }
+
+        // Implement the best non-tabu move
+        TL.poll();
+        if (bestCandOut != null) {
+            currentSol.remove(bestCandOut);
+            TL.add(bestCandOut);
+        } else {
+            TL.add(fake);
+        }
+        TL.poll();
+        if (bestCandIn != null) {
+            currentSol.add(bestCandIn);
+            TL.add(bestCandIn);
+        } else {
+            TL.add(fake);
+        }
+        ObjFunction.evaluate(currentSol);
+
         return null;
+
     }
 
     @Override
     public Boolean constructiveStopCriteria() {
         Boolean isSolFeasible = pap.isSolFeasible(currentSol);
-        System.out.println(isSolFeasible);
         return super.constructiveStopCriteria() && isSolFeasible;
     }
 
@@ -152,16 +213,16 @@ public class TS_PAP extends AbstractTS<int[]> {
      */
     public static void main(String[] args) throws IOException {
 
-        TS_PAP tabusearch = new TS_PAP(20, 10000, "instances/P50D50S5.pap");
-        PAP_Inverse pap = (PAP_Inverse) tabusearch.ObjFunction;
-
-        int[] test = new int[] { 1, 2, 3 };
-        int[] test2 = new int[] { 1, 2, 3 };
-
-        tabusearch.constructiveHeuristic();
-
-        System.out.println(pap.isSolFeasible(tabusearch.currentSol));
-        System.out.println(tabusearch.currentSol.toString());
+        long startTime = System.currentTimeMillis();
+        TS_PAP tabusearch = new TS_PAP(100, 1000, "instances/P50D50S5.pap");
+        Solution<int[]> bestSol = tabusearch.solve();
+        System.out.println(tabusearch.pap.isSolFeasible(bestSol));
+        System.out.println(tabusearch.pap.evalNoPen(bestSol));
+        System.out.println(tabusearch.pap.ntd[0]);
+		System.out.println("maxVal = " + bestSol);
+		long endTime = System.currentTimeMillis();
+		long totalTime = endTime - startTime;
+		System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
 
     }
 

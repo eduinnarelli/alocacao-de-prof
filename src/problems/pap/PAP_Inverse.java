@@ -11,8 +11,8 @@ public class PAP_Inverse extends PAP {
     }
 
     @Override
-    public Double evaluate(Solution<int[]> sol) {
-        return -super.evaluate(sol);
+    public Double evaluatePAP(Solution<int[]> sol) {
+        return -super.evaluatePAP(sol);
     }
 
     @Override
