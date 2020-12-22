@@ -171,19 +171,22 @@ def solve(P, D, T, S, H, hd, apd, rpt, f_name):
         model.optimize()
 
         # Analisa resultados da otimizacao
-        if model.status == GRB.OPTIMAL:
-            print("Nome do modelo: ", model.ModelName)
-            print("Valor da funcao objetivo: ", model.ObjVal)
-            print("Tempo de execucao: ", model.Runtime)
-            print("Numero de iteracoes: ", model.IterCount)
-            print("Numero de variaveis de decisao: ", model.NumVars)
-            print("Numero de restricoes: ", model.NumConstrs)
-            print("Numero de objetivos: ", model.NumObj)
+        if model.status == GRB.OPTIMAL or model.status == GRB.TIME_LIMIT:
+            if model.SolCount > 0:
+                print("Nome do modelo: ", model.ModelName)
+                print("Valor da funcao objetivo: ", model.ObjVal)
+                print("Tempo de execucao: ", model.Runtime)
+                print("Numero de iteracoes: ", model.IterCount)
+                print("Numero de variaveis de decisao: ", model.NumVars)
+                print("Numero de restricoes: ", model.NumConstrs)
+                print("Numero de objetivos: ", model.NumObj)
 
-            with open("pap_pli_resultados.csv", 'a', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow([model.ModelName, model.ObjVal, model.Runtime,
-                                 model.IterCount, model.NumVars, model.NumConstrs, model.NumObj])
+                with open("pap_pli_resultados.csv", 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow([model.ModelName, model.ObjVal, model.Runtime,
+                                     model.IterCount, model.NumVars, model.NumConstrs, model.NumObj])
+            else:
+                print('Modelo nao gerou solucao viavel dentro do tempo limite de {}\n'.format(model.Params.timeLimit))
 
         elif model.status == GRB.INF_OR_UNBD:
             print('Modelo inviavel ou ilimitado\n')
@@ -195,10 +198,11 @@ def solve(P, D, T, S, H, hd, apd, rpt, f_name):
             print('Modelo ilimitado\n')
 
         else:
-            print('Otimizacao terminou com status %d' % model.status)
+            print('Otimizacao terminou com status {}\n'.format(model.status))
+            # Consultar https://www.gurobi.com/documentation/9.1/refman/optimization_status_codes.html
 
     except gp.GurobiError as e:
-        print('Codigo de erro ' + str(e.errno) + ': ' + str(e))
+        print('Codigo de erro {} : {}\n'.format(str(e.errno), str(e)))
 
     except AttributeError:
         print('Encontrado erro de atributo\n')
@@ -237,7 +241,7 @@ if __name__ == "__main__":
             # Cria arquivo .csv para armazenar os resultados
             with open("pap_pli_resultados.csv", 'a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(["Instancia", "Valor Obj", "Tempo",
+                writer.writerow(["Instancia", "Valor Obj", "Tempo(s)",
                                  "# Iteracoes", "# Variaveis", " # Restricoes", "# Obj"])
 
             # Resolve todas as instancia via Gurobi
