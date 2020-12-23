@@ -95,65 +95,8 @@ def solve(P, D, T, S, H, hd, apd, rpt, f_name):
         z_vars = {(p, t): model.addVar(vtype=GRB.BINARY, name="x_{0}_{1}".format(p, t))
                   for p in range(P) for t in range(T)}
 
-        # Restricoes
+        # (2.1) Funcao objetivo
 
-        # Garante que uma disciplina pode estar alocada a no maximo um professor
-        r0 = {(d):
-              model.addConstr(
-            lhs=gp.quicksum(x_vars[p, d] for p in range(P)),
-            sense=GRB.LESS_EQUAL,
-            rhs=1,
-            name="r0_{0}".format(d))
-            for d in range(D)}
-
-        # Cada disciplina d exige hd periodos em uma semana
-        r1 = {(d):
-              model.addConstr(
-            lhs=gp.quicksum(y_vars[d, t] for t in range(T)),
-            sense=GRB.EQUAL,
-            rhs=gp.quicksum(np.squeeze(hd)[d] * x_vars[p, d]
-                            for p in range(P)),
-            name="r1_{0}".format(d))
-            for d in range(D)}
-
-        # O instituto possui S salas, portanto no maximo S disciplinas podem ser ministradas no mesmo periodo
-        r2 = {(t):
-              model.addConstr(
-            lhs=gp.quicksum(y_vars[d, t] for d in range(D)),
-            sense=GRB.LESS_EQUAL,
-            rhs=S,
-            name="r2_{0}".format(t))
-            for t in range(T)}
-
-        # Cada professor p possui restricoes de quais periodos nao pode lecionar, se r_{p}_{t} = 1 entao o
-        # professor p pode lecionar no periodo t. Caso contrario, r_{p}_{t} = 0
-        r3 = {(p, t):
-              model.addConstr(
-            lhs=z_vars[p, t],
-            sense=GRB.LESS_EQUAL,
-            rhs=rpt[p, t],
-            name="r3_{0}_{1}".format(p, t))
-            for p in range(P) for t in range(T)}
-
-        # Um professor pode estar alocado a mais de uma disciplina, no entanto a carga de disciplinas do professor deve somar no maximo H períodos
-        r4 = {(p):
-              model.addConstr(
-            lhs=gp.quicksum(z_vars[p, t] for t in range(T)),
-            sense=GRB.LESS_EQUAL,
-            rhs=H,
-            name="r4_{0}".format(p))
-            for p in range(P)}
-
-        # Se um professor e alocado a uma disciplina e esta e alocada num período, o professor e alocado no mesmo período
-        r5 = {(p, d, t):
-              model.addConstr(
-            lhs=x_vars[p, d] + y_vars[d, t] - 1,
-            sense=GRB.LESS_EQUAL,
-            rhs=z_vars[p, t],
-            name="r5_{0}_{1}_{2}".format(p, d, t))
-            for p in range(P) for d in range(D) for t in range(T)}
-
-        # Funcao objetivo
         # Maximiza os professores com a maior avaliacao possivel alocados para cada disciplina e subtrai
         # uma penalidade de valor 100 caso nao exista solucao
         exp1 = gp.quicksum(apd[p, d] * x_vars[p, d]
@@ -165,6 +108,55 @@ def solve(P, D, T, S, H, hd, apd, rpt, f_name):
 
         exp = exp1 - exp2
         model.setObjective(exp, GRB.MAXIMIZE)
+
+        # Restricoes
+
+        # (2.2) Garante que uma disciplina pode estar alocada a no maximo um professor
+        r0 = {(d):
+              model.addConstr(
+            lhs=gp.quicksum(x_vars[p, d] for p in range(P)),
+            sense=GRB.LESS_EQUAL,
+            rhs=1,
+            name="r0_{0}".format(d))
+            for d in range(D)}
+
+        # (2.3) O número de períodos que um professor trabalha deve corresponder ao número de períodos das disciplinas que ele oferece
+        r1 = {(p):
+              model.addConstr(
+            lhs=gp.quicksum(z_vars[p, t] for t in range(T)),
+            sense=GRB.EQUAL,
+            rhs=gp.quicksum(np.squeeze(hd)[d] * x_vars[p, d]
+                            for d in range(D)),
+            name="r1_{0}".format(p))
+            for p in range(P)}
+
+        # (2.4) O instituto possui $S$ salas, portanto no máximo $S$ professores podem trabalhar no mesmo período
+        r2 = {(t):
+              model.addConstr(
+            lhs=gp.quicksum(z_vars[p, t] for p in range(P)),
+            sense=GRB.LESS_EQUAL,
+            rhs=S,
+            name="r2_{0}".format(t))
+            for t in range(T)}
+
+        # (2.5) Cada professor p possui restricoes de quais periodos nao pode lecionar, se r_{p}_{t} = 1 entao o
+        # professor p pode lecionar no periodo t. Caso contrario, r_{p}_{t} = 0
+        r3 = {(p, t):
+              model.addConstr(
+            lhs=z_vars[p, t],
+            sense=GRB.LESS_EQUAL,
+            rhs=rpt[p, t],
+            name="r3_{0}_{1}".format(p, t))
+            for p in range(P) for t in range(T)}
+
+        # (2.6) Um professor pode estar alocado a mais de uma disciplina, no entanto a carga de disciplinas do professor deve somar no máximo H períodos
+        r4 = {(p):
+              model.addConstr(
+            lhs=gp.quicksum(z_vars[p, t] for t in range(T)),
+            sense=GRB.LESS_EQUAL,
+            rhs=H,
+            name="r4_{0}".format(p))
+            for p in range(P)}
 
         # Otimizar
         model.setParam(GRB.Param.TimeLimit, 1800.0)
