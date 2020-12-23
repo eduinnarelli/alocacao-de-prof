@@ -5,63 +5,109 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StreamTokenizer;
-import java.util.Set;
-import java.util.Arrays;
-import java.util.HashSet;
 
 import problems.Evaluator;
 import solutions.Solution;
 
+/**
+ * Class representing the Professor Allocation Problem, with methods to evaluate
+ * the neighborhood moves and check feasibility.
+ * 
+ * @author brichau, einnarelli, rmeirelles
+ */
 public class PAP implements Evaluator<int[]> {
 
+  /**
+   * dimension of the domain
+   */
   public final Integer size;
 
+  /**
+   * penalty given to infeasible solutions
+   */
   public final int pen = 5000;
 
+  /**
+   * number of professors
+   */
   public int P;
 
+  /**
+   * number of disciplines
+   */
   public int D;
 
+  /**
+   * number of times
+   */
   public int T;
 
+  /**
+   * number of rooms available
+   */
   public int S;
 
+  /**
+   * number of times an professor can work at the week
+   */
   public int H;
 
+  /**
+   * number of times required per discipline
+   */
   public int[] h;
 
+  /**
+   * avaliation of professor p at discipline d
+   */
   public int[][] a;
 
+  /**
+   * possibility of professor p to work at time t
+   */
   public int[][] r;
 
+  /**
+   * number of times t a discipline d is allocated at in solution
+   */
   public int[] w;
 
+  /**
+   * professor p allocated to discipline d in solution
+   */
   public int[][] x;
 
+  /**
+   * discipline d given at time t in solution
+   */
   public int[][] y;
 
+  /**
+   * professor p working at time t in solution
+   */
   public int[][] z;
 
   /**
-   * number of professors p allocated to discipline d
+   * number of professors p allocated to discipline d in solution
    */
   public int[] npd;
 
   /**
-   * number of periods t a discipline d is allocated at
-   */
-  public int[] ntd;
-
-  /**
-   * number of disciplines d allocated at time t
+   * number of disciplines d allocated at time t in solution
    */
   public int[] ndt;
 
   /**
-   * number of times t a professor p works
+   * number of times t a professor p works in solution
    */
   public int[] ntp;
 
+  /**
+   * The constructor for the PAP class.
+   * 
+   * @param filename Name of the file containing the input for setting the PAP.
+   * @throws IOException Necessary for I/O operations.
+   */
   public PAP(String filename) throws IOException {
     size = readInput(filename);
   }
@@ -76,75 +122,44 @@ public class PAP implements Evaluator<int[]> {
     return size;
   }
 
+  /*
+   * (non-Javadoc)
+   * 
+   * @see problems.Evaluator#evaluate()
+   */
   @Override
   public Double evaluate(Solution<int[]> sol) {
+    setVariables(sol);
     return sol.cost = evaluatePAP(sol);
   }
 
+  /**
+   * Evaluate PAP objective function, penalizing it if there are non allocated
+   * disciplines or if the solution is infeasible.
+   * 
+   * @param sol PAP solution to be evaluated.
+   */
   public Double evaluatePAP(Solution<int[]> sol) {
 
     Double _cost = 0.0;
 
-    // number of times d is allocated
-    int[] ntd_ = new int[D];
+    for (int p = 0; p < P; p++) {
+      for (int d = 0; d < D; d++) {
 
-    for (int[] elem : sol) {
+        // increment cost
+        _cost += a[p][d] * x[p][d];
 
-      // get professor and discipline
-      int p = elem[0], d = elem[1];
-
-      // increment cost
-      _cost += a[p][d];
-
-      // discipline d is allocated one more time
-      ntd_[d]++;
-
+      }
     }
 
     for (int d = 0; d < D; d++) {
 
       // penalize non allocated disciplines
-      if (ntd_[d] == 0)
+      if (w[d] == 0)
         _cost -= 100;
 
       // penalize infeasible solutions
-      else if (ntd_[d] != h[d])
-        _cost -= pen;
-
-    }
-
-    return _cost;
-
-  }
-
-  public Double evalNoPen(Solution<int[]> sol) {
-    
-    Double _cost = 0.0;
-
-    // number of times d is allocated
-    int[] ntd_ = new int[D];
-
-    for (int[] elem : sol) {
-
-      // get professor and discipline
-      int p = elem[0], d = elem[1];
-
-      // increment cost
-      _cost += a[p][d];
-
-      // discipline d is allocated one more time
-      ntd_[d]++;
-
-    }
-
-    for (int d = 0; d < D; d++) {
-
-      // penalize non allocated disciplines
-      if (ntd_[d] == 0)
-        _cost -= 100;
-
-      // penalize infeasible solutions
-      else if (ntd_[d] != h[d]) 
+      else if (w[d] != h[d])
         _cost -= pen;
 
     }
@@ -167,6 +182,11 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Evaluate the insertion of an element [p, d, t] in the current solution.
+   * 
+   * @param elem The element to enter the solution.
+   */
   public Double evaluateInsertionPAP(int[] elem) {
 
     Double insCost = 0.0;
@@ -207,6 +227,11 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Evaluate the removal of an element [p, d, t] in the current solution.
+   * 
+   * @param elem The element to leave the solution.
+   */
   public Double evaluateRemovalPAP(int[] elem) {
 
     Double remCost = 0.0;
@@ -246,6 +271,12 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Evaluate the exchange of two elements [p, d, t] in the current solution.
+   * 
+   * @param elemIn  The element to enter the solution.
+   * @param elemOut The element to leave the solution.
+   */
   public Double evaluateExchangePAP(int[] elemIn, int[] elemOut) {
 
     // get professors and disciplines
@@ -287,13 +318,17 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Calculate some sums used to check if an element is feasible.
+   * 
+   * @param sol The PAP solution to which calculate the sums.
+   */
   public void accumulate(Solution<int[]> sol) {
 
     setVariables(sol);
 
     // instantiate accumulators
     npd = new int[D];
-    ntd = new int[D];
     ndt = new int[T];
     ntp = new int[P];
 
@@ -306,10 +341,8 @@ public class PAP implements Evaluator<int[]> {
 
       for (int t = 0; t < T; t++) {
         // check if discipline d is given at time t
-        if (y[d][t] == 1) {
-          ntd[d]++;
+        if (y[d][t] == 1)
           ndt[t]++;
-        }
       }
     }
 
@@ -323,6 +356,11 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Checks if an element [p,d,t] can enter the solution.
+   * 
+   * @param elem The element to be checked.
+   */
   public Boolean isElemFeasible(int[] elem) {
 
     // get professor p, discipline d and time t
@@ -333,7 +371,7 @@ public class PAP implements Evaluator<int[]> {
       return false;
 
     // if d is already allocated at h[d] periods, elem is infeasible
-    if (ntd[d] == h[d] && y[d][t] == 0)
+    if (w[d] == h[d] && y[d][t] == 0)
       return false;
 
     // if there are S disciplines allocated at time t, d cannot be allocated at t
@@ -352,47 +390,11 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
-  public Boolean isSolFeasible(Solution<int[]> sol) {
-
-    accumulate(sol);
-
-    for (int d = 0; d < D; d++) {
-      for (int t = 0; t < T; t++) {
-
-        // at most S disciplines can be allocated at time t
-        if (ndt[t] > S)
-          return false;
-
-      }
-
-      // a discipline must be allocated to at most 1 professor
-      if (npd[d] > 1)
-        return false;
-
-      // if allocated, the discipline d requires h[d] times in a week
-      if (npd[d] > 0 && ntd[d] != h[d])
-        return false;
-
-    }
-
-    for (int p = 0; p < P; p++) {
-      for (int t = 0; t < T; t++) {
-
-        // a professor p only can work at time t if r[p][t] == 1
-        if (z[p][t] > r[p][t])
-          return false;
-
-        // a professor p can work in at most H times
-        if (ntp[p] > H)
-          return false;
-
-      }
-    }
-
-    return true;
-
-  }
-
+  /**
+   * Set the PLI model variables, used to evaluate the solution.
+   * 
+   * @param sol The PAP solution.
+   */
   public void setVariables(Solution<int[]> sol) {
 
     // reset all
@@ -416,6 +418,14 @@ public class PAP implements Evaluator<int[]> {
 
   }
 
+  /**
+   * Responsible for setting the problem parameters by reading the necessary input
+   * from an external file.
+   * 
+   * @param filename Name of the file containing the input.
+   * @return The dimension of the domain.
+   * @throws IOException Necessary for I/O operations.
+   */
   protected Integer readInput(String filename) throws IOException {
 
     Reader fileInst = new BufferedReader(new FileReader(filename));

@@ -12,12 +12,35 @@ import metaheuristics.tabusearch.AbstractTS;
 import problems.pap.PAP_Inverse;
 import solutions.Solution;
 
+/**
+ * Metaheuristic TS (Tabu Search) for obtaining an optimal solution to the
+ * Professor Allocation Problem. Since by default this TS considers minimization
+ * problems, an inverse objective function is adopted.
+ * 
+ * @author brichau, einnarelli, rmeirelles
+ */
 public class TS_PAP extends AbstractTS<int[]> {
 
+    /**
+     * empty element to enter tabu list
+     */
     private final int[] fake = new int[] {};
 
+    /**
+     * problem evaluator
+     */
     PAP_Inverse pap;
 
+    /**
+     * Constructor for the TS_PAP class. An inverse PAP objective function is passed
+     * as argument for the superclass constructor.
+     * 
+     * @param tenure     The Tabu tenure parameter.
+     * @param iterations The number of iterations which the TS will be executed.
+     * @param filename   Name of the file for which the objective function
+     *                   parameters should be read.
+     * @throws IOException necessary for I/O operations.
+     */
     public TS_PAP(Integer tenure, Integer iterations, String filename) throws IOException {
 
         super(new PAP_Inverse(filename), tenure, iterations);
@@ -79,6 +102,13 @@ public class TS_PAP extends AbstractTS<int[]> {
 
     }
 
+    /*
+     * {@inheritDoc}
+     * 
+     * This method initializes an empty CL and iterate over every possible
+     * candidate. One element is inserted in CL if it is feasible and is not in the
+     * current solution.
+     */
     @Override
     public void updateCL() {
 
@@ -132,6 +162,12 @@ public class TS_PAP extends AbstractTS<int[]> {
         return sol;
     }
 
+    /**
+     * {@inheritDoc}
+     * 
+     * The local search operator developed for the PAP objective function is
+     * composed by the neighborhood moves Insertion, Removal and 2-Exchange.
+     */
     @Override
     public Solution<int[]> neighborhoodMove() {
 
@@ -202,27 +238,18 @@ public class TS_PAP extends AbstractTS<int[]> {
 
     }
 
-    @Override
-    public Boolean constructiveStopCriteria() {
-        Boolean isSolFeasible = pap.isSolFeasible(currentSol);
-        return super.constructiveStopCriteria() && isSolFeasible;
-    }
-
     /**
      * A main method used for testing the TS metaheuristic.
      */
     public static void main(String[] args) throws IOException {
 
         long startTime = System.currentTimeMillis();
-        TS_PAP tabusearch = new TS_PAP(100, 1000, "instances/P50D50S5.pap");
+        TS_PAP tabusearch = new TS_PAP(100, 1000, "instances/P100D150S10.pap");
         Solution<int[]> bestSol = tabusearch.solve();
-        System.out.println(tabusearch.pap.isSolFeasible(bestSol));
-        System.out.println(tabusearch.pap.evalNoPen(bestSol));
-        System.out.println(tabusearch.pap.ntd[0]);
-		System.out.println("maxVal = " + bestSol);
-		long endTime = System.currentTimeMillis();
-		long totalTime = endTime - startTime;
-		System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
+        System.out.println("maxVal = " + bestSol);
+        long endTime = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+        System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
 
     }
 
