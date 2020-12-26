@@ -255,9 +255,6 @@ public class TS_PAP extends AbstractTS<int[]> {
         long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
         System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
-        System.out.println(ts.pap.isSolFeasible(bestSol));
-        System.out.println(Arrays.toString(ts.pap.ntp));
-        System.out.println(Arrays.toString(ts.pap.nhdp));
 
     }
 
