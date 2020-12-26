@@ -25,7 +25,7 @@ public class PAP implements Evaluator<int[]> {
   /**
    * penalty given to infeasible solutions
    */
-  public final int pen = 5000;
+  public final int pen = 1000;
 
   /**
    * number of professors
@@ -96,6 +96,11 @@ public class PAP implements Evaluator<int[]> {
    * number of disciplines d allocated at time t in solution
    */
   public int[] ndt;
+
+  /**
+   * number of times t a discipline d is given in solution
+   */
+  public int[] ntd;
 
   /**
    * number of times t a professor p works in solution
@@ -248,7 +253,7 @@ public class PAP implements Evaluator<int[]> {
     // most one professor, the removal will always penalize the cost
     remCost -= a[p][d] + 100;
 
-    // penalize infeasibility if the removal makes the solution infeasible
+    // ** penalize infeasibility if the removal makes the solution infeasible
     if (w[d] == h[d]) {
       remCost -= pen;
     }
@@ -304,10 +309,12 @@ public class PAP implements Evaluator<int[]> {
     // check if disciplines are equal
     if (dIn != dOut) {
 
+      // remove feasibility penalty if insertion make solution feasible
       if (w[dIn] == h[dIn] - 1) {
         exCost += pen;
       }
 
+      // penalize infeasibility if the removal makes the solution infeasible
       if (w[dOut] == h[dOut]) {
         exCost -= pen;
       }
@@ -330,6 +337,7 @@ public class PAP implements Evaluator<int[]> {
     // instantiate accumulators
     npd = new int[D];
     ndt = new int[T];
+    ntd = new int[D];
     ntp = new int[P];
 
     for (int d = 0; d < D; d++) {
@@ -341,8 +349,10 @@ public class PAP implements Evaluator<int[]> {
 
       for (int t = 0; t < T; t++) {
         // check if discipline d is given at time t
-        if (y[d][t] == 1)
+        if (y[d][t] == 1) {
+          ntd[d]++;
           ndt[t]++;
+        }
       }
     }
 
@@ -371,7 +381,7 @@ public class PAP implements Evaluator<int[]> {
       return false;
 
     // if d is already allocated at h[d] periods, elem is infeasible
-    if (w[d] == h[d] && y[d][t] == 0)
+    if (w[d] > 0 && w[d] == h[d] && y[d][t] == 0)
       return false;
 
     // if there are S disciplines allocated at time t, d cannot be allocated at t
@@ -385,6 +395,52 @@ public class PAP implements Evaluator<int[]> {
     // if professor p already work at H times, elem is infeasible
     if (ntp[p] == H && z[p][t] == 0)
       return false;
+
+    return true;
+
+  }
+
+  /**
+   * Method to debug if a solution is feasible or not.
+   * 
+   * @param sol The solution to be checked.
+   */
+  public Boolean isSolFeasible(Solution<int[]> sol) {
+
+    accumulate(sol);
+
+    for (int d = 0; d < D; d++) {
+      for (int t = 0; t < T; t++) {
+
+        // at most S disciplines can be allocated at time t
+        if (ndt[t] > S)
+          return false;
+
+      }
+
+      // a discipline must be allocated to at most 1 professor
+      if (npd[d] > 1)
+        return false;
+
+      // if allocated, the discipline d requires h[d] times in a week
+      if (npd[d] > 0 && ntd[d] != h[d])
+        return false;
+
+    }
+
+    for (int p = 0; p < P; p++) {
+      for (int t = 0; t < T; t++) {
+
+        // a professor p only can work at time t if r[p][t] == 1
+        if (z[p][t] > r[p][t])
+          return false;
+
+        // a professor p can work in at most H times
+        if (ntp[p] > H)
+          return false;
+
+      }
+    }
 
     return true;
 

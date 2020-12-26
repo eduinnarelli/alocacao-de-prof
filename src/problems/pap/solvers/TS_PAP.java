@@ -35,15 +35,19 @@ public class TS_PAP extends AbstractTS<int[]> {
      * Constructor for the TS_PAP class. An inverse PAP objective function is passed
      * as argument for the superclass constructor.
      * 
-     * @param tenure     The Tabu tenure parameter.
-     * @param iterations The number of iterations which the TS will be executed.
-     * @param filename   Name of the file for which the objective function
-     *                   parameters should be read.
+     * @param tenure          The Tabu tenure parameter.
+     * @param iterations      The number of iterations which the TS will be
+     *                        executed.
+     * @param filename        Name of the file for which the objective function
+     *                        parameters should be read.
+     * @param resultsFileName The file where the results will be stored.
+     * @param instName        The instance name.
      * @throws IOException necessary for I/O operations.
      */
-    public TS_PAP(Integer tenure, Integer iterations, String filename) throws IOException {
+    public TS_PAP(Integer tenure, Integer iterations, String filename, String resultsFileName, String instName)
+            throws IOException {
 
-        super(new PAP_Inverse(filename), tenure, iterations);
+        super(new PAP_Inverse(filename), tenure, iterations, resultsFileName, instName);
 
         // cast to PAP_Inverse to have access to it's attributes and methods
         pap = (PAP_Inverse) this.ObjFunction;
@@ -238,18 +242,40 @@ public class TS_PAP extends AbstractTS<int[]> {
 
     }
 
+    /*
+     * Run Tabu Search for PAP.
+     */
+    public static void run(int tenure, int maxIt, String filename, double maxTime, String resultsFileName,
+            String instName) throws IOException {
+
+        long startTime = System.currentTimeMillis();
+        TS_PAP ts = new TS_PAP(tenure, maxIt, filename, resultsFileName, instName);
+        Solution<int[]> bestSol = ts.solve(maxTime);
+        System.out.println("maxVal = " + bestSol);
+        long endTime = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+        System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
+        System.out.println(ts.pap.isSolFeasible(bestSol));
+        System.out.println(Arrays.toString(ts.pap.ntp));
+        System.out.println(Arrays.toString(ts.pap.nhdp));
+
+    }
+
     /**
      * A main method used for testing the TS metaheuristic.
      */
     public static void main(String[] args) throws IOException {
 
-        long startTime = System.currentTimeMillis();
-        TS_PAP tabusearch = new TS_PAP(100, 1000, "instances/P100D150S10.pap");
-        Solution<int[]> bestSol = tabusearch.solve();
-        System.out.println("maxVal = " + bestSol);
-        long endTime = System.currentTimeMillis();
-        long totalTime = endTime - startTime;
-        System.out.println("Time = " + (double) totalTime / (double) 1000 + " seg");
+        String inst[] = { "instances/P50D50S1.pap", "instances/P50D50S3.pap", "instances/P50D50S5.pap",
+                "instances/P70D70S1.pap", "instances/P70D70S3.pap", "instances/P70D70S5.pap", "instances/P70D100S6.pap",
+                "instances/P70D100S8.pap", "instances/P70D100S10.pap", "instances/P100D150S10.pap",
+                "instances/P100D150S10.pap", "instances/P100D150S20.pap" };
+
+        // test all instances
+        for (String file : inst) {
+            String name = file.substring(file.indexOf("/") + 1, file.indexOf("."));
+            TS_PAP.run(20, 1000, file, 1800.0, "pap_ts_resultados.csv", name);
+        }
 
     }
 

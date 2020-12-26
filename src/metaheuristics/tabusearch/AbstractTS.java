@@ -1,8 +1,8 @@
-/**
- * 
- */
 package metaheuristics.tabusearch;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Random;
@@ -27,7 +27,17 @@ public abstract class AbstractTS<E> {
 	/**
 	 * a random number generator
 	 */
-	static Random rng = new Random(0);
+	private Random rng;
+
+	/**
+	 * path to store the history file.
+	 */
+	protected String resultsFileName;
+
+	/**
+	 * instance name.
+	 */
+	protected String instName;
 
 	/**
 	 * the objective function being optimized
@@ -58,6 +68,11 @@ public abstract class AbstractTS<E> {
 	 * the number of iterations the TS main loop executes.
 	 */
 	protected Integer iterations;
+
+	/**
+	 * current iteration.
+	 */
+	protected Integer currIteration;
 
 	/**
 	 * the tabu tenure.
@@ -134,14 +149,21 @@ public abstract class AbstractTS<E> {
 	/**
 	 * Constructor for the AbstractTS class.
 	 * 
-	 * @param objFunction The objective function being minimized.
-	 * @param tenure      The Tabu tenure parameter.
-	 * @param iterations  The number of iterations which the TS will be executed.
+	 * @param objFunction     The objective function being minimized.
+	 * @param tenure          The Tabu tenure parameter.
+	 * @param iterations      The number of iterations which the TS will be
+	 *                        executed.
+	 * @param resultsFileName The file where the results will be stored.
+	 * @param instName        The instance name.
 	 */
-	public AbstractTS(Evaluator<E> objFunction, Integer tenure, Integer iterations) {
+	public AbstractTS(Evaluator<E> objFunction, Integer tenure, Integer iterations, String resultsFileName,
+			String instName) {
 		this.ObjFunction = objFunction;
 		this.tenure = tenure;
 		this.iterations = iterations;
+		this.resultsFileName = resultsFileName;
+		this.instName = instName;
+		this.rng = new Random(0);
 	}
 
 	/**
@@ -209,20 +231,38 @@ public abstract class AbstractTS<E> {
 	 * in which each iteration a neighborhood move is performed on the current
 	 * solution. The best solution is returned as result.
 	 * 
+	 * @param maxTime Time limit.
 	 * @return The best feasible solution obtained throughout all iterations.
 	 */
-	public Solution<E> solve() {
+	public Solution<E> solve(double maxTime) {
 
+		long startTime = System.currentTimeMillis(), endTime;
+		double totalTime;
+
+		// constructive phase
 		incumbentSol = createEmptySol();
 		constructiveHeuristic();
 		TL = makeTL();
-		for (int i = 0; i < iterations; i++) {
+
+		for (currIteration = 0; currIteration < iterations; currIteration++) {
+
+			// local search
 			neighborhoodMove();
+
 			if (incumbentSol.cost > currentSol.cost) {
+				// found a better solution
 				incumbentSol = new Solution<E>(currentSol);
 				if (verbose)
-					System.out.println("(Iter. " + i + ") BestSol = " + incumbentSol);
+					printSolutionMeasure((System.currentTimeMillis() - startTime) / (double) 1000);
 			}
+
+			endTime = System.currentTimeMillis();
+			totalTime = (endTime - startTime) / (double) 1000;
+
+			// if it exceeded the time limit, break the loop
+			if (totalTime > maxTime)
+				break;
+
 		}
 
 		return incumbentSol;
@@ -236,6 +276,57 @@ public abstract class AbstractTS<E> {
 	 */
 	public Boolean constructiveStopCriteria() {
 		return (currentCost > currentSol.cost) ? false : true;
+	}
+
+	/**
+	 * Prints the measures of the new incumbent solution
+	 * 
+	 * @param totalTime Time ellapsed.
+	 */
+	private void printSolutionMeasure(double totalTime) {
+
+		// print result in stdout
+		if (verbose)
+			System.out.println("(Iter. " + currIteration + ", Time " + totalTime + ") BestSol = " + incumbentSol);
+
+		// write result in file if a file name was given
+		if (resultsFileName != null) {
+			try {
+				printSolutionMeasuresToFile(totalTime);
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.exit(0);
+			}
+		}
+
+	}
+
+	/**
+	 * Saves the measures of the new incumbent solution to file
+	 * 
+	 * @param totalTime Time ellapsed.
+	 * @throws IOException Necessary for I/O operations.
+	 */
+	private void printSolutionMeasuresToFile(double totalTime) throws IOException {
+
+		FileWriter file;
+		File fp = new File(resultsFileName);
+
+		// create or open file
+		if (!fp.exists()) {
+			file = new FileWriter(resultsFileName);
+			String header = "instance;solutionCost;iterations;time;solutionSize\n";
+			file.write(header);
+		} else {
+			file = new FileWriter(resultsFileName, true);
+		}
+
+		// write current result to file
+		String result = String.format("%s;%s;%s;%s;%s\n", instName, -1.00 * incumbentSol.cost,
+				currIteration, totalTime, incumbentSol.size());
+		file.write(result);
+		file.close();
+
 	}
 
 }
