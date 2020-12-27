@@ -266,7 +266,7 @@ public class TS_PAP extends AbstractTS<int[]> {
         String inst[] = { "instances/P50D50S1.pap", "instances/P50D50S3.pap", "instances/P50D50S5.pap",
                 "instances/P70D70S1.pap", "instances/P70D70S3.pap", "instances/P70D70S5.pap", "instances/P70D100S6.pap",
                 "instances/P70D100S8.pap", "instances/P70D100S10.pap", "instances/P100D150S10.pap",
-                "instances/P100D150S10.pap", "instances/P100D150S20.pap" };
+                "instances/P100D150S10.pap", "instances/P100D150S15.pap", "instances/P100D150S20.pap" };
 
         // test all instances
         for (String file : inst) {

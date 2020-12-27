@@ -3,6 +3,8 @@ Problema de Alocação de Professores (PAP)
 
 Atividade 9 de MO824 - Tópicos em Otimização Combinatória.
 
+O código relativo à busca tabu se encontra na pasta `src`, enquanto o código da resolução exata está no arquivo `pap_pli.py`.
+
 **Grupo:**
   - Bruno Mendes Richau (157743)
   - Rogério Meirelles (160245)
